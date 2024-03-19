@@ -19,6 +19,6 @@ dependencies = [
     'importlib-metadata; python_version<"3.8"',
     "Pyomo >= 6.7.0"
 ]
-dynamic = ["version"]
+version = "1.2.3"
 
 
