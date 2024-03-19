@@ -1,7 +1,13 @@
 name: Publish to PyPI.org
-on:
-  release:
-    types: [published]
+on: 
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags'  
 jobs:
   pypi:
     runs-on: ubuntu-latest
@@ -14,4 +20,4 @@ jobs:
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: pypi-AgEIcHlwaS5vcmcCJGIyMmQ3OTFkLTE0MjItNGM5My04OTI4LTJlNjRkMjZhYWIzOAACEVsxLFsiZm9rbC1iZXRhIl1dAAIsWzIsWyJjYWQ0MzRlMC01MGZjLTRlNGQtYjVjMC1lMGQzOGNjZjRkZDQiXV0AAAYgUxDL7vqVfyGKg9coA9FXucKeq__gdvPHj5hGDO3QNrw
