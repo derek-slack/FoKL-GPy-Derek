@@ -2,17 +2,17 @@ import math
 import numpy as np
 
 
-def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs):
+def GP_Integrate(betas, matrix, inputs_time, norms, phis, start, stop, y0, h, used_inputs):
     """
         betas is a list of arrays in which each entry to the list contains a specific row of the betas matrix,
         or the mean of the the betas matrix for each model being integrated
 
         matrix is a list of arrays containing the interaction matrix of each model
 
-        b is an array of of the values of all the other inputs to the model(s) (including
-        any forcing functions) over the time period we integrate over. The length of b
+        'inputs_time' is an array of of the values of all the other inputs to the model(s) (including
+        any forcing functions) over the time period we integrate over. The length of it
         should be equal to the number of points in the final time series (end-start)/h
-        All values in b need to be normalized with respect to the min and max values
+        All values in 'inputs_time' need to be normalized with respect to the min and max values
         of their respective values in the training dataset
 
         h is the step size with respect to time
@@ -23,12 +23,13 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
         Start is the time at which integration begins. Stop is the time to
         end integration.
 
-        y0 is an array of the inital conditions for the models being integrated
+        y0 is an array of the inital conditions for the models being integrated, if there is a single 
+        inital condidition it should still be in array format: i.e y0 = [i]
 
         Used inputs is a list of arrays containing the information as to what inputs
         are used in what model. Each array should contain a vector corresponding to a different model.
         Inputs should be referred to as those being integrated first, followed by
-        those contained in b (in the same order as they appear in y0 and b
+        those contained in inputs_time (in the same order as they appear in y0 and inputs_time
         respectively)
         For example, if two models were being integrated, with 3 other inputs total
         and the 1st model used both models outputs as inputs and the 1st and 3rd additional
@@ -50,13 +51,13 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
         contained in T.
     """
 
-    def prediction(inputs):
+    def prediction(inputs, kernel):
         f = []
         for kk in range(len(inputs)):
             if len(f) == 0:
-                f = [bss_eval(inputs[kk], betas[kk], phis, matrix[kk])]
+                f = [bss_eval(inputs[kk], betas[kk], phis, matrix[kk], kernel=kernel)]
             else:
-                f = np.append(f, bss_eval(inputs[kk], betas[kk], phis, matrix[kk]))
+                f = np.append(f, bss_eval(inputs[kk], betas[kk], phis, matrix[kk], kernel))
         return f
 
     def reorder(used, inputs):
@@ -74,8 +75,7 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
         if norm[0] < 0:
             norm[0] = 0
         return norm
-
-    def bss_eval(x, betas, phis, mtx, Xin=[]):
+    def bss_eval(x, betas, phis, mtx, Xin=[], kernel=None):
         """
         x are normalized inputs
         betas are coefficients. If using 'Xin' include all betas (include constant beta)
@@ -89,6 +89,8 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
 
         Xin is an optional input of the chi matrix. If this was pre-computed with xBuild,
         one may use it to improve performance.
+
+        kernel = 0 for Cubic Spline, kernel=1 for Bernoulli Polynomials
         """
 
         if Xin == []:
@@ -100,23 +102,29 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
 
             delta = np.zeros([mx, mbet])
 
-            phind = []
+            if kernel == 0:  # Cubic Splines
+            
+                phind = []
 
-            for j in range(len(x)):
-                phind.append(math.floor(x[j] * 498))
+                for j in range(len(x)):
+                    phind.append(math.floor(x[j] * 498))
 
-            phind_logic = []
-            for k in range(len(phind)):
-                if phind[k] == 498:
-                    phind_logic.append(1)
-                else:
-                    phind_logic.append(0)
+                phind_logic = []
+                for k in range(len(phind)):
+                    if phind[k] == 498:
+                        phind_logic.append(1)
+                    else:
+                        phind_logic.append(0)
 
-            phind = np.subtract(phind, phind_logic)
+                phind = np.subtract(phind, phind_logic)
 
-            r = 1 / 498
-            xmin = r * np.array(phind)
-            X = (x - xmin) / r
+                r = 1 / 498
+                xmin = r * np.array(phind)
+                X = (x - xmin) / r
+            
+            elif kernel == 1:  # Bernoulli Polynomials
+                X = x
+
             for ii in range(mx):
                 for i in range(m):
                     phi = 1
@@ -125,11 +133,14 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
 
                         num = mtx[i][j]
 
-                        if num != 0:
-                            phi = phi * (phis[int(num) - 1][0][phind[j]] + phis[int(num) - 1][1][phind[j]] * X[j] \
-                                         + phis[int(num) - 1][2][phind[j]] * X[j] ** 2 + phis[int(num) - 1][3][
-                                             phind[j]] *
-                                         X[j] ** 3)
+                        if num != 0:  # evaluate basis
+                            if kernel == 0:  # Cubic Splines
+                                phi = phi * (phis[int(num) - 1][0][phind[j]] + phis[int(num) - 1][1][phind[j]] * X[j] \
+                                            + phis[int(num) - 1][2][phind[j]] * X[j] ** 2 + phis[int(num) - 1][3][
+                                                phind[j]] *
+                                            X[j] ** 3)
+                            elif kernel == 1:  # Bernoulli Polynomials
+                                phi *= phis[int(num) - 1][0] + sum(phis[int(num - 1)][k] * X[j] ** k for k in range(1, len(phis[int(num - 1)])))
 
                     delta[ii, :] = delta[ii, :] + betas[i + 1] * phi
                     mmm = 1
@@ -150,9 +161,13 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
                     print("Success! New shape is", np.shape(betas))
 
             delta = Xin.dot(betas.T)
-        dc = 1
+        
         return delta
-
+        
+    if kernel is None:
+    kernel = 0  # Cubic Splines, by default
+    
+    b = inputs_time
     T = np.arange(start, stop + h, h)
     y = y0
     Y = np.array([y0])
@@ -191,8 +206,6 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
                             else:
 
                                 othinputs[ii] = b[ind - 1]
-
-                                ttt = 1
                         else:
                             othinputs[ii] = np.append(othinputs[ii], b[ind - 1, jj - len(y0)], 1)
             for k in range(len(y)):
@@ -265,7 +278,7 @@ def GP_Integrate(betas, matrix, b, norms, phis, start, stop, y0, h, used_inputs)
         for ii in range(len(y0)):
             if np.amax(used_inputs[ii]) > 1:
                 inputs4[ii] = reorder(used_inputs[ii], inputs4[ii])
-        dy4 = prediction(inputs4) * h
+        dy4 = prediction(inputs4, kernel) * h
         for p in range(len(y)):
             if (y[p] + dy3[p]) >= norms[1, p] and dy4[p] > 0:
                 dy4[p] = 0
