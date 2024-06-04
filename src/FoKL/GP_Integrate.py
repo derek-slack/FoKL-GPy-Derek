@@ -165,7 +165,7 @@ def GP_Integrate(betas, matrix, inputs_time, norms, phis, start, stop, y0, h, us
         return delta
         
     if kernel is None:
-    kernel = 0  # Cubic Splines, by default
+        kernel = 0  # Cubic Splines, by default
     
     b = inputs_time
     T = np.arange(start, stop + h, h)
@@ -214,7 +214,7 @@ def GP_Integrate(betas, matrix, inputs_time, norms, phis, start, stop, y0, h, us
             if np.amax(used_inputs[ii]) > 1:
                 inputs1[ii] = reorder(used_inputs[ii], inputs1[ii])
 
-        dy1 = prediction(inputs1) * h
+        dy1 = prediction(inputs1, kernel) * h
 
         for p in range(len(y)):
             if y[p] >= norms[1, p] and dy1[p] > 0:
@@ -237,7 +237,7 @@ def GP_Integrate(betas, matrix, inputs_time, norms, phis, start, stop, y0, h, us
         for ii in range(len(y0)):
             if np.amax(used_inputs[ii]) > 1:
                 inputs2[ii] = reorder(used_inputs[ii], inputs2[ii])
-        dy2 = prediction(inputs2) * h
+        dy2 = prediction(inputs2, kernel) * h
         for p in range(len(y)):
             if (y[p] + dy1[p] / 2) >= norms[1, p] and dy2[p] > 0:
                 dy2[p] = 0
@@ -258,7 +258,7 @@ def GP_Integrate(betas, matrix, inputs_time, norms, phis, start, stop, y0, h, us
         for ii in range(len(y0)):
             if np.amax(used_inputs[ii]) > 1:
                 inputs3[ii] = reorder(used_inputs[ii], inputs3[ii])
-        dy3 = prediction(inputs3) * h
+        dy3 = prediction(inputs3, kernel) * h
         for p in range(len(y)):
             if (y[p] + dy2[p] / 2) >= norms[1, p] and dy3[p] > 0:
                 dy3[p] = 0
