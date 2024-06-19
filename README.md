@@ -529,6 +529,19 @@ the 3rd additional input came first, followed by the two model outputs in
 the same order as they are in ```y0```, and ends with the 1st additional input,
 then the 1st cell in ```used_inputs``` would have the form ```[2, 3, 4, 0, 1]```.
 
+Multiple models are able to be integrated simulatneously, betas, and matrix will be a cell of cells containing the respective parameters of
+the model. For example if two models are trained on data X = f(x_dot, a) and Y = f(y_dot, b) then something like this would be called:
+```
+model1.fit(inputs = [x_dot, a], data = X)
+model2.fit(inputs = [y_dot, b], data = Y)
+```
+then to integrate the models you would define the intial conidtions of x0, y0 as the 'y0' input, and the vector of a and b would be 
+the 'b' input and defined for every timestep.
+```
+GP_integrate(..., y0 = [x0, y0], ..., b = [a,b], ...)
+```
+
+
 ## Benchmarks and Papers
 
 As mentioned in [About FoKL](#about-fokl), the primary advantage offered by FoKL in comparison to other machine learning packages 
