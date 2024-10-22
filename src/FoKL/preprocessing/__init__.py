@@ -1,1 +1,1 @@
-__all__ = ['kwargProcessing','kernels']
+__all__ = ['kwargProcessing','kernels','hyperParm']
