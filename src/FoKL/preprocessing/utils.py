@@ -1,7 +1,6 @@
 import warnings
-__all__ = ['_process_kwargs', '_merge_dicts', '_set_attributes', '_str_to_bool']
 
-def _str_to_bool(s):
+def str_to_bool(s):
     """Convert potential string (e.g., 'on'/'off') to boolean True/False. Intended to handle exceptions for keywords."""
     if isinstance(s, str):
         if s in ['yes', 'y', 'on', 'all', 'true', 'both']:
@@ -23,7 +22,7 @@ def _str_to_bool(s):
     return s
 
 
-def _process_kwargs(default, user):
+def process_kwargs(default, user):
     """Update default values with user-defined keyword arguments (kwargs), or simply check all kwargs are expected."""
     if isinstance(default, dict):
         expected = default.keys()
@@ -45,7 +44,7 @@ def _process_kwargs(default, user):
         raise ValueError("Input 'default' must be a dictionary or list.")
 
 
-def _set_attributes(self, attrs):
+def set_attributes(self, attrs):
     """Set items stored in Python dictionary 'attrs' as attributes of class."""
     if isinstance(attrs, dict):
         for key, value in attrs.items():
@@ -55,7 +54,7 @@ def _set_attributes(self, attrs):
     return
 
 
-def _merge_dicts(d1, d2):
+def merge_dicts(d1, d2):
     """Merge two dictionaries into single dictionary in a backward-compatible way. Values of d2 replace any shared variables in d1."""
     d = d1.copy()
     d.update(d2)
