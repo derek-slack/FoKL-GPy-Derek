@@ -1,4 +1,9 @@
-def _format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
+import numpy as np
+import warnings
+import pandas as pd
+from FoKLRoutines_update import _str_to_bool, _process_kwargs
+
+def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
    """
    Called by 'clean' to format dataset.
        - formats inputs as 2D ndarray, where columns are input variables; n_rows > n_cols if AutoTranspose=True
@@ -60,7 +65,7 @@ def _format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, b
            
    return inputs, data
 
-def _normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
+def normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
     """
     Called by 'clean' to normalize dataset inputs.
     Inputs:
@@ -246,7 +251,7 @@ def trainset(self):
     else:  # self.trainlog is vector indexing observations
         return self.inputs[self.trainlog, :], self.data[self.trainlog]
     
-def _inputs_to_phind(self, inputs, phis=None, kernel=None):
+def inputs_to_phind(self, inputs, phis=None, kernel=None):
     """
     Twice normalize the inputs to index the spline coefficients.
     Inputs:

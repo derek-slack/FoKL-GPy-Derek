@@ -1,3 +1,6 @@
+from FoKLRoutines_update import _str_to_bool
+import numpy as np
+
 def clear(self, keep=None, clear=None, all=False):
     """
     Delete all attributes from the FoKL class except for hyperparameters and settings by default, but user may
@@ -30,4 +33,4 @@ def clear(self, keep=None, clear=None, all=False):
         if attr not in attrs_to_keep:
             delattr(self, attr)  # delete attribute from FoKL class if not keeping
 
-    return
+    return 
