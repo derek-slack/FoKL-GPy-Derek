@@ -1,4 +1,4 @@
-from FoKLRoutines_update import _str_to_bool
+from ..utils import str_to_bool
 import numpy as np
 
 def clear(self, keep=None, clear=None, all=False):
@@ -15,7 +15,7 @@ def clear(self, keep=None, clear=None, all=False):
     """
 
     if all is not False:  # if not default
-        all = _str_to_bool(all)  # convert to boolean if all='on', etc.
+        all = str_to_bool(all)  # convert to boolean if all='on', etc.
 
     if all is False:
         attrs_to_keep = self.keep  # default

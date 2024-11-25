@@ -1,7 +1,8 @@
 import numpy as np
 import warnings
 import pandas as pd
-from FoKLRoutines_update import _str_to_bool, _process_kwargs
+import copy
+from ..utils import str_to_bool, process_kwargs, merge_dicts
 
 def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
    """
@@ -10,8 +11,8 @@ def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bi
        - formats data as 2D ndarray, with single column   Note SingleInstance has priority over AutoTranspose. If SingleInstance=True, then AutoTranspose=False.
    """
    # Format and check inputs:
-   AutoTranspose = _str_to_bool(AutoTranspose)
-   SingleInstance = _str_to_bool(SingleInstance)
+   AutoTranspose = str_to_bool(AutoTranspose)
+   SingleInstance = str_to_bool(SingleInstance)
    bits = {16: np.float16, 32: np.float32, 64: np.float64}  # allowable datatypes: https://numpy.org/doc/stable/reference/arrays.scalars.html#arrays-scalars-built-in
    if SingleInstance is True:
        AutoTranspose = False
@@ -212,9 +213,9 @@ def clean(self, inputs, data=None, kwargs_from_other=None, _setattr=False, **kwa
                # For '_normalize':
                'normalize': True, 'minmax': None, 'pillow': None, 'pillow_type': 'percent'}
     if kwargs_from_other is not None:  # then clean is being called from fit or evaluate function
-        kwargs = _merge_dicts(kwargs, kwargs_from_other)  # merge dictionaries (kwargs={} is expected but just in case)
-    current = _process_kwargs(default, kwargs)
-    current['normalize'] = _str_to_bool(current['normalize'])
+        kwargs = merge_dicts(kwargs, kwargs_from_other)  # merge dictionaries (kwargs={} is expected but just in case)
+    current = process_kwargs(default, kwargs)
+    current['normalize'] = str_to_bool(current['normalize'])
     # Format and normalize:
     inputs, data = self._format(inputs, data, current['AutoTranspose'], current['SingleInstance'], current['bit'])
     if current['normalize'] is True:

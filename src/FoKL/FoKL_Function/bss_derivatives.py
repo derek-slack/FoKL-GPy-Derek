@@ -1,6 +1,5 @@
-from FoKLRoutines_update import _process_kwargs, _str_to_bool
+from ..utils import process_kwargs, str_to_bool
 import numpy as np 
-import panda as pd 
 import  warnings
 
 def bss_derivatives(self, **kwargs):
@@ -32,9 +31,9 @@ def bss_derivatives(self, **kwargs):
     default = {'inputs': None, 'kernel': self.kernel, 'd1': None, 'd2': None, 'draws': self.draws, 'betas': None,
                'phis': None, 'mtx': self.mtx, 'minmax': self.minmax, 'IndividualDraws': False,
                'ReturnFullArray': False, 'ReturnBasis': False}
-    current = _process_kwargs(default, kwargs)
+    current = process_kwargs(default, kwargs)
     for boolean in ['IndividualDraws', 'ReturnFullArray', 'ReturnBasis']:
-        current[boolean] = _str_to_bool(current[boolean])
+        current[boolean] = str_to_bool(current[boolean])
     # Load defaults:
     if current['inputs'] is None:
         current['inputs'] = self.inputs
@@ -91,7 +90,7 @@ def bss_derivatives(self, **kwargs):
             di = np.zeros(M, dtype=bool)  # default is no second derivatives (i.e., gradient)
             error_di = False
         elif isinstance(di, str):
-            if _str_to_bool(di):
+            if str_to_bool(di):
                 di = np.ones(M, dtype=bool)
             else:
                 di = np.zeros(M, dtype=bool)

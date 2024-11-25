@@ -4,6 +4,7 @@ import warnings
 import os
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def smooth_coefficients(phis):
@@ -236,7 +237,7 @@ def sp500(**kwargs):
 
     # Merge filename with path to filename:
     path_to_here = os.path.dirname(os.path.realpath(__file__))
-    path_to_kernel = os.path.join(path_to_here, 'kernels', 'splineCoefficient500_highPrecision_smoothed.txt')
+    path_to_kernel = os.path.join(path_to_here, 'splineCoefficient500_highPrecision_smoothed.txt')
     if Save:
         path_to_save = os.path.join(path_to_here, 'kernels', f'smoothed{round(time.time())}.txt')
 

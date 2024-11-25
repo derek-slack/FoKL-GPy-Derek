@@ -57,7 +57,7 @@ def _str_to_bool(s):
         else:
             warnings.warn(f"Could not understand string '{s}' as a boolean.", category=UserWarning)
     elif s is None or not s:  # 'not s' for s == []
-        s = False
+        s = False 
     else:
         try:
             if s != 0:

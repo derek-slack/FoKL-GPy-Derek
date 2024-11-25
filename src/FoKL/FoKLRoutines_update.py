@@ -1,24 +1,27 @@
-from preprocessing.kernels import getKernels
-from preprocessing import *
-from sampler import * 
-from postprocessing import *
-from FoKL_Function import *
+from .utils import str_to_bool, process_kwargs, merge_dicts, set_attributes
+from .fokl_to_pyomo import fokl_to_pyomo
+from .preprocessing.kernels import getKernels
+from .preprocessing.dataFormat import clean
+from .preprocessing import *
+from .sampler import fit 
+from .postprocessing import *
+from .FoKL_Function import *
 import warnings
 
 def load_model(filename, directory=None): 
     return load(filename, directory)
 
-def _str_to_bool(s): 
-    return str_to_bool(s)
+# def _str_to_bool(s): 
+#     return str_to_bool(s)
 
-def _process_kwargs(**kwargs):
-    return process_kwargs(**kwargs)
+# def _process_kwargs(**kwargs):
+#     return process_kwargs(**kwargs)
 
-def _set_attributes(self, **kwargs):
-    return set_attributes(self, **kwargs)
+# def _set_attributes(self, **kwargs):
+#     return set_attributes(self, **kwargs)
 
-def _merge_dicts(dict1, dict2):
-    return merge_dicts(dict1, dict2)
+# def _merge_dicts(dict1, dict2):
+#     return merge_dicts(dict1, dict2)
 
 class FoKL:
     def __init__(self, **kwargs):
@@ -107,7 +110,7 @@ class FoKL:
         
         self.settings = ['Userwarnings', 'Consoleoutput']
 
-        self.kernel = ['Cubic Splines', 'Bernoulli Polynomials']
+        self.kernels = ['Cubic Splines', 'Bernoulli Polynomials']
 
         self.keep = ['keep', 'hypers', 'settings', 'kernels'] + self.hypers + self.settings + self.kernels
 
@@ -123,10 +126,10 @@ class FoKL:
                    # Other:
                    'UserWarnings': True, 'ConsoleOutput': True
                    }
-        current = _process_kwargs(default, kwargs)  # = default, but updated by any user kwargs
+        current = process_kwargs(default, kwargs)  # = default, but updated by any user kwargs
         for boolean in ['gimmie', 'way3', 'aic', 'UserWarnings', 'ConsoleOutput']:
             if not (current[boolean] is False or current[boolean] is True):
-                current[boolean] = _str_to_bool(current[boolean])
+                current[boolean] = str_to_bool(current[boolean])
 
         # Load spline coefficients:
         phis = current['phis']  # in case advanced user is testing other splines
@@ -160,7 +163,7 @@ class FoKL:
         inputs = normalize(self, inputs, minmax, pillow, pillow_type)
         return inputs
     
-    def cleam(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
+    def clean(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
         inputs, data = clean(self, inputs, data, AutoTranspose, SingleInstance, bit)
         return inputs, data
     
@@ -201,10 +204,17 @@ class FoKL:
         mean, bounds, rmse = coverage3(self, **kwargs)
         return mean, bounds, rmse 
     
-    def fit(self, inputs=None, data=None, **kwargs):
-        result = fit(self, inputs, data, **kwargs)
+    def fit(self, inputs=None, data=None, sampler = 'gibbs', **kwargs):
+        result = fit(self, inputs, data, sampler, **kwargs)
         return result
     
+    # need to do more examination 
     def clear(self, keep=None, clear=None, all=False):
         return clear(self, keep=keep, clear=clear, all=all)
     
+    def to_pyomo(self, xvars, yvars, m=None, xfix=None, yfix=None, truescale=True, std=True, draws=None):
+        return fokl_to_pyomo(self, xvars, yvars, m, xfix, yfix, truescale, std, draws)
+    
+    def save(self, filename=None, **kwargs):
+        filepath = save(self, filename, **kwargs)
+        return filepath
