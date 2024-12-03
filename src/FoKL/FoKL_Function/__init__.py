@@ -5,6 +5,8 @@ from .clear import clear
 from .evaluate_basis import evaluate_basis
 from .generate_trainlog import generate_trainlog
 from .to_pyomo import to_pyomo
+from .trainset import trainset 
 
 
-__all__ = ['load', 'save', 'bss_derivatives', 'clear', 'evaluate_basis', 'generate_trainlog', 'to_pyomo']
+__all__ = ['load', 'save', 'bss_derivatives', 'clear', 'evaluate_basis',
+            'generate_trainlog', 'to_pyomo', 'trainset']

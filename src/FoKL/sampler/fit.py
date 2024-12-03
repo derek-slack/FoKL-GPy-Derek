@@ -1,5 +1,5 @@
 from ..utils import str_to_bool, process_kwargs
-from .preprocessing import clean
+from preprocessing.dataFormat import clean
 import itertools
 import sys
 import numpy as np
@@ -7,6 +7,7 @@ from numpy import linalg as LA
 import math
 from scipy.linalg import eigh
 import warnings
+
 
 def gibbs(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
     """

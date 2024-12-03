@@ -155,11 +155,11 @@ class FoKL:
         for key, value in current.items():
             setattr(self, key, value)
             
-    def _format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
+    def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
         inputs, data = format(self, inputs, data, AutoTranspose, SingleInstance, bit)
         return inputs, data
     
-    def _normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
+    def normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
         inputs = normalize(self, inputs, minmax, pillow, pillow_type)
         return inputs
     

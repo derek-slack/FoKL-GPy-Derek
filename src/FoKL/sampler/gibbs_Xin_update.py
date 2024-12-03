@@ -1,7 +1,13 @@
-from .sampler_base import SamplerBase
+import numpy as np
+from scipy.linalg import eigh
+from .samplers import BaseSampler
 
-class Sampler2(SamplerBase):
-    def gibbs_Xin_update(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm, \
+class Sampler2(BaseSampler):
+    def __init__(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm, 
+                                 mu_old, Sigma_old, draws):
+        super().__init__(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm, mu_old, Sigma_old, draws)
+        
+    def gibbs_Xin_update(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm,
                                  mu_old, Sigma_old, draws):
         """
         This version of the sampler increases efficiency by accepting an set of

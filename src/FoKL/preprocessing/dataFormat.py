@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 import pandas as pd
 import copy
-from ..utils import str_to_bool, process_kwargs, merge_dicts
+from ..utils import str_to_bool, process_kwargs, merge_dicts, set_attributes
 
 def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
    """
@@ -115,7 +115,7 @@ def normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
     
     # Process 'minmax':
     
-    def _minmax_error():
+    def minmax_error():
         raise ValueError("Input 'minmax' must correspond to input variables (i.e., columns of 'inputs').")
     if minmax is None:  # default, read 'model.normalize' or define if does not exist
         if hasattr(self, 'minmax'):
@@ -129,14 +129,14 @@ def normalize(self, inputs, minmax=None, pillow=None, pillow_type='percent'):
                 minmax = [minmax]  # add outer list
                 lm = 1  # = len(minmax)
             if lm != int(mm * 2):
-                _minmax_error()
+                minmax_error()
             else:  # assume [min1, max1, ..., minm, maxm] needs to be formatted to [[min1, max1], ..., [minm, maxm]]
                 minmax_vals = copy.deepcopy(minmax)
                 minmax = []
                 for i in range(0, lm, 2):
                     minmax.append([minmax_vals[i], minmax_vals[i + 1]])  # list of [min, max] lists
         elif len(minmax) != mm:
-            _minmax_error()
+            minmax_error()
     if pillow is not None and _skip_pillow is False:
         minmax_vals = copy.deepcopy(minmax)
         minmax = []
@@ -217,9 +217,9 @@ def clean(self, inputs, data=None, kwargs_from_other=None, _setattr=False, **kwa
     current = process_kwargs(default, kwargs)
     current['normalize'] = str_to_bool(current['normalize'])
     # Format and normalize:
-    inputs, data = self._format(inputs, data, current['AutoTranspose'], current['SingleInstance'], current['bit'])
+    inputs, data = self.format(inputs, data, current['AutoTranspose'], current['SingleInstance'], current['bit'])
     if current['normalize'] is True:
-        inputs = self._normalize(inputs, current['minmax'], current['pillow'], current['pillow_type'])
+        inputs = self.normalize(inputs, current['minmax'], current['pillow'], current['pillow_type'])
     
         # Check if any 'inputs' exceeds [0, 1], since 'normalize=True' implies this is desired:
         inputs_cap0 = inputs < 0
@@ -234,7 +234,7 @@ def clean(self, inputs, data=None, kwargs_from_other=None, _setattr=False, **kwa
         trainlog = self.generate_trainlog(current['train'], inputs.shape[0])
         # Define/update attributes with cleaned data and other relevant variables:
         attrs = {'inputs': inputs, 'data': data, 'trainlog': trainlog}
-        _set_attributes(self, attrs)
+        set_attributes(self, attrs)
     # Return formatted and possibly normalized dataset, depending on if user passed 'inputs' only or 'inputs' and 'data':
     if data is None:  # assume user only wants 'inputs' returned, e.g., 'clean_dataset = model.clean(dataset)'
         return inputs
