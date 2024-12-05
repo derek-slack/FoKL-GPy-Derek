@@ -4,28 +4,15 @@ from abc import ABC, abstractmethod
 from preprocessing.dataFormat import clean
 from FoKL_Function import trainset
 from ..utils import process_kwargs, str_to_bool
+from FoKLRoutines_update import FoKL
 import warnings
 import numpy as np
 import math
 import itertools
 
-class BaseSampler(ABC):
-    def __init__(self, inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
-        self.inputs = inputs
-        self.data = data
-        self.phis = phis
-        self.Xin = Xin
-        self.discmtx = discmtx
-        self.a = a
-        self.b = b
-        self.atau = atau
-        self.btau = btau
-        self.draws = draws
-        self.phind = phind
-        self.xsm = xsm
-        self.sigsqd = sigsqd
-        self.tausqd = tausqd
-        self.dtd = dtd
+class fitSampler(FoKL):
+    def __init__(self, hypers, settings, kernels, keep, default):
+        super().__init__(self, hypers, settings, kernels, keep, default)
 
     def fit(self, inputs=None, data=None, **kwargs):
         """

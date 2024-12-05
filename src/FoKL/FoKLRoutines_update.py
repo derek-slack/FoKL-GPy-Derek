@@ -3,7 +3,7 @@ from .fokl_to_pyomo import fokl_to_pyomo
 from .preprocessing.kernels import getKernels
 from .preprocessing.dataFormat import clean
 from .preprocessing import *
-from .sampler import fit 
+from .sampler.samplers import fitSampler
 from .postprocessing import *
 from .FoKL_Function import *
 import warnings
@@ -204,8 +204,8 @@ class FoKL:
         mean, bounds, rmse = coverage3(self, **kwargs)
         return mean, bounds, rmse 
     
-    def fit(self, inputs=None, data=None, sampler = 'gibbs', **kwargs):
-        result = fit(self, inputs, data, sampler, **kwargs)
+    def fit(self, inputs=None, data=None, **kwargs):
+        result = fitSampler.fit(self, inputs, data, **kwargs)
         return result
     
     # need to do more examination 
