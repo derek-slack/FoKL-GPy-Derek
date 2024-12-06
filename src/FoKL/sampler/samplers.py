@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 import math
 import itertools
+import sys
 
 class fitSampler(FoKL):
     def __init__(self, hypers, settings, kernels, keep, default):

@@ -1,5 +1,5 @@
 """
-[ExAMPLE]: Sigmoid
+[EXAMPLE]: Sigmoid
 
 This is an example of FoKL modeling a dataset based on an arbitrary sigmoid function. In the following it will be shown
 how to initialize the FoKL class (i.e., model), how to train the model on the dataset by calling 'fit', and how to

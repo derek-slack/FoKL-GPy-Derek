@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.linalg import eigh
-from .samplers import BaseSampler
+from .samplers import fitSampler
 
-class Sampler2(BaseSampler):
+class Sampler2(fitSampler):
     def __init__(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm, 
                                  mu_old, Sigma_old, draws):
         super().__init__(sigsqd0, inputs, data, phis, Xin, discmtx, a, b, atau, btau, phind, xsm, mu_old, Sigma_old, draws)

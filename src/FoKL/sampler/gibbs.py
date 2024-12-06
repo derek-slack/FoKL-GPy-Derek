@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.linalg import eigh
-from .samplers import BaseSampler
+from .samplers import fitSampler
 
-class Sampler1(BaseSampler):
+class Sampler1fit(fitSampler):
     def __init__(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
         super().__init__(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd)
     def gibbs(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
