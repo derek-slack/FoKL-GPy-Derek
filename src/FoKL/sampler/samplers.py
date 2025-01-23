@@ -1,19 +1,21 @@
 __all__ = ["BaseSampler", "GibbsSampler", "GibbsUpdateSampler"]
-import gibbs, gibbs_Xin_update
-from abc import ABC, abstractmethod
-from preprocessing.dataFormat import clean
-from FoKL_Function import trainset
 from ..utils import process_kwargs, str_to_bool
-from FoKLRoutines_update import FoKL
 import warnings
 import numpy as np
+from numpy import linalg as LA
+from scipy.linalg import eigh
 import math
 import itertools
 import sys
 
-class fitSampler(FoKL):
-    def __init__(self, hypers, settings, kernels, keep, default):
-        super().__init__(self, hypers, settings, kernels, keep, default)
+class fitSampler:
+    def __init__(self, fokl, config, dataFormat, functions):
+        self.fokl = fokl
+        self.config = config
+        self.ConsoleOutput = self.config.DEFAULT['ConsoleOutput']
+        self.dataFormat = dataFormat
+        self.functions = functions
+       # self.inputs = self.fokl.dataFormat.clean
 
     def fit(self, inputs=None, data=None, **kwargs):
         """
@@ -39,8 +41,6 @@ class fitSampler(FoKL):
         Added Attributes:
             - Various ... please see description of 'clean()'
         """
-
-
         # Check for unexpected keyword arguments:
         default_for_fit = {'ConsoleOutput': True}
         default_for_fit['ConsoleOutput'] = str_to_bool(kwargs.get('ConsoleOutput', self.ConsoleOutput))
@@ -50,7 +50,7 @@ class fitSampler(FoKL):
                              'AutoTranspose': True, 'SingleInstance': False, 'bit': 64,
                              # For '_normalize':
                              'normalize': True, 'minmax': None, 'pillow': None, 'pillow_type': 'percent'}
-        expected = self.hypers + list(default_for_fit.keys()) + list(default_for_clean.keys())
+        expected = self.config.HYPERS + list(default_for_fit.keys()) + list(default_for_clean.keys())
         kwargs = process_kwargs(expected, kwargs)
         if default_for_fit['clean'] is False:
             if any(kwarg in default_for_clean.keys() for kwarg in kwargs.keys()):
@@ -59,7 +59,7 @@ class fitSampler(FoKL):
         # Process keyword arguments and update/define class attributes:
         kwargs_to_clean = {}
         for kwarg in kwargs.keys():
-            if kwarg in self.hypers:  # for case of user sweeping through hyperparameters within 'fit' argument
+            if kwarg in self.config.HYPERS:  # for case of user sweeping through hyperparameters within 'fit' argument
                 if kwarg in ['gimmie', 'way3', 'aic']:
                     setattr(self, kwarg, str_to_bool(kwargs[kwarg]))
                 else:
@@ -72,21 +72,22 @@ class fitSampler(FoKL):
         self.ConsoleOutput = default_for_fit['ConsoleOutput']
         # Perform automatic cleaning of 'inputs' and 'data' (unless user specified not to), and handle exceptions:
         error_clean_failed = False
+       # if default_for_fit['clean'] is True:
         if default_for_fit['clean'] is True:
             try:
                 if inputs is None:  # assume clean already called and len(data) same as train data if data not None
-                    inputs, _ = self.trainset()
+                    inputs, _ = self.dataFormat.trainset()
                 if data is None:  # assume clean already called and len(inputs) same as train inputs if inputs not None
-                    _, data = self.trainset()
+                    _, data = self.dataFormat.trainset()
             except Exception as exception:
                 error_clean_failed = True
-            self.clean(inputs, data, kwargs_from_other=kwargs_to_clean, _setattr=True)
+            inputs, data, minmax = self.dataFormat.clean(inputs, data, kwargs_from_other=kwargs_to_clean, _setattr=True)
         else:  # user input implies that they already called clean prior to calling fit
             try:
                 if inputs is None:  # assume clean already called and len(data) same as train data if data not None
-                    inputs, _ = self.trainset()
+                    inputs, _ = self.dataFormat.trainset()
                 if data is None:  # assume clean already called and len(inputs) same as train inputs if inputs not None
-                    _, data = self.trainset()
+                    _, data = self.dataFormat.trainset()
             except Exception as exception:
                 warnings.warn("Keyword 'clean' was set to False but is required prior to or during 'fit'. Assuming "
                               "'clean' is True.", category=UserWarning)
@@ -94,31 +95,33 @@ class fitSampler(FoKL):
                     error_clean_failed = True
                 else:
                     default_for_fit['clean'] = True
-                    self.clean(inputs, data, kwargs_from_other=kwargs_to_clean, _setattr=True)
+                    inputs, data, minmax = self.dataFormat.clean(inputs, data, kwargs_from_other=kwargs_to_clean, _setattr=True)
         if error_clean_failed is True:
             raise ValueError("'inputs' and/or 'data' were not provided so 'clean' could not be performed.")
         # After cleaning and/or handling exceptions, define cleaned 'inputs' and 'data' as local variables:
         try:
-            inputs, data = self.trainset()
+            inputs, data = self.dataFormat.trainset()
         except Exception as exception:
             warnings.warn("If not calling 'clean' prior to 'fit' or within the argument of 'fit', then this is the "
                           "likely source of any subsequent errors. To troubleshoot, simply include 'clean=True' within "
                           "the argument of 'fit'.", category=UserWarning)
+            
+        
         # Define attributes as local variables:
-        phis = self.phis
-        relats_in = self.relats_in
-        a = self.a
-        b = self.b
-        atau = self.atau
-        btau = self.btau
-        tolerance = self.tolerance
-        draws = self.burnin + self.draws  # after fitting, the 'burnin' draws will be discarded from 'betas'
-        gimmie = self.gimmie
-        way3 = self.way3
-        threshav = self.threshav
-        threshstda = self.threshstda
-        threshstdb = self.threshstdb
-        aic = self.aic
+        phis = self.config.DEFAULT['phis']
+        relats_in = self.config.DEFAULT['relats_in']
+        a = self.config.DEFAULT['a']
+        b = self.config.DEFAULT['b']
+        atau = self.config.DEFAULT['atau']
+        btau = self.config.DEFAULT['btau']
+        tolerance = self.config.DEFAULT['tolerance']
+        draws = self.config.DEFAULT['draws'] + self.config.DEFAULT['burnin']  # after fitting, the 'burnin' draws will be discarded from 'betas'
+        gimmie = self.config.DEFAULT['gimmie']
+        way3 = self.config.DEFAULT['way3']
+        threshav = self.config.DEFAULT['threshav']
+        threshstda = self.config.DEFAULT['threshstda']
+        threshstdb = self.config.DEFAULT['threshstdb']
+        aic = self.config.DEFAULT['aic']
         # Update 'b' and/or 'btau' if set to default:
         if btau is None or b is None:  # then use 'data' to define (in combination with 'a' and/or 'atau')
             # Calculate variance and mean, both as 64-bit, but for large datasets (i.e., less than 64-bit) be careful
@@ -152,13 +155,13 @@ class fitSampler(FoKL):
             a = np.vstack(list(itertools.permutations(x)))[::-1]
             return a
         # Prepare phind and xsm if using cubic splines, else match variable names required for gibbs argument
-        if self.kernel == self.kernels[0]:  # == 'Cubic Splines':
-            _, phind, xsm = self._inputs_to_phind(inputs)  # ..., phis=self.phis, kernel=self.kernel) already true
-        elif self.kernel == self.kernels[1]:  # == 'Bernoulli Polynomials':
+        if self.config.KERNELS[0] == self.config.DEFAULT['kernel']:  # == 'Cubic Splines':
+            _, phind, xsm = self.dataFormat.inputs_to_phind(inputs)  # ..., phis=self.phis, kernel=self.kernel) already true
+        elif self.config.KERNELS[1] == self.config.DEFAULT['kernel']:  # == 'Bernoulli Polynomials':
             phind = None
             xsm = inputs
         # [BEGIN] initialization of constants (for use in gibbs to avoid repeat large calculations):
-        if self.update == True:
+        if self.config.DEFAULT['update'] == True:
             self.betas, self.mtx, self.evs = self.fit(inputs, data)
             return self.betas, self.mtx, self.evs
         # initialize tausqd at the mode of its prior: the inverse of the mode of sigma squared, such that the
@@ -182,6 +185,169 @@ class fitSampler(FoKL):
             warnings.warn("The dataset is too large such that the inner product of the output 'data' vector is "
                           "Inf. This will likely cause values in 'betas' to be Nan.", category=UserWarning)
         # [END] initialization of constants
+        def gibbs(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
+            """
+            'inputs' is the set of normalized inputs -- both parameters and model
+            inputs -- with columns corresponding to inputs and rows the different
+            experimental designs. (numpy array)
+
+            'data' are the experimental results: column vector, with entries
+            corresponding to rows of 'inputs'
+
+            'phis' are a data structure with the coefficients for the basis
+            functions
+
+            'discmtx' is the interaction matrix for the bss-anova function -- rows
+            are terms in the function and columns are inputs (cols should line up
+            with cols in 'inputs'
+
+            'a' and 'b' are the parameters of the ig distribution for the
+            observation error variance of the data
+
+            'atau' and 'btau' are the parameters of the ig distribution for the 'tau
+            squared' parameter: the variance of the beta priors
+
+            'draws' is the total number of draws
+
+            Additional Constants (to avoid repeat calculations found in later development):
+                - phind
+                - xsm
+                - sigsqd
+                - tausqd
+                - dtd
+            """
+            # building the matrix by calculating the corresponding basis function outputs for each set of inputs
+            minp, ninp = np.shape(inputs)
+            phi_vec = []
+            if np.shape(discmtx) == ():  # part of fix for single input model
+                mmtx = 1
+            else:
+                mmtx, null = np.shape(discmtx)
+
+            if np.size(Xin) == 0:
+                Xin = np.ones((minp, 1))
+                mxin, nxin = np.shape(Xin)
+            else:
+                # X = Xin
+                mxin, nxin = np.shape(Xin)
+            if mmtx - nxin < 0:
+                X = Xin
+            else:
+                X = np.append(Xin, np.zeros((minp, mmtx - nxin)), axis=1)
+
+            for i in range(minp):  # for datapoint in training datapoints
+
+                # ------------------------------
+                # [IN DEVELOPMENT] PRINT PERCENT COMPLETION TO CONSOLE (reported to cause significant delay):
+                #
+                # if self.ConsoleOutput and data.dtype != np.float64:  # if large dataset, show progress for sanity check
+                #     percent = i / (minp - 1)
+                #     sys.stdout.write(f"Gibbs: {round(100 * percent, 2):.2f}%")  # show percent of data looped through
+                #     sys.stdout.write('\r')  # set cursor at beginning of console output line (such that next iteration
+                #         # of Gibbs progress (or [ind, ev] if at end) overwrites current Gibbs progress)
+                #     sys.stdout.flush()
+                #
+                # [END]
+                # ----------------------------
+                
+                for j in range(nxin, mmtx + 1):
+                    null, nxin2 = np.shape(X)
+                    if j == nxin2:
+                        X = np.append(X, np.zeros((minp, 1)), axis=1)
+
+                    phi = 1
+
+                    for k in range(ninp):  # for input var in input vars
+
+                        if np.shape(discmtx) == ():
+                            num = discmtx
+                        else:
+                            num = discmtx[j - 1][k]
+
+                        if num != 0:  # enter if loop if num is nonzero
+                            nid = int(num - 1)
+
+                            # Evaluate basis function:
+                            if self.config.KERNELS[0] == self.config.DEFAULT['kernel']:  # == 'Cubic Splines':
+                                coeffs = [phis[nid][order][phind[i, k]] for order in range(4)]  # coefficients for cubic
+                            elif self.config.KERNELS[1] == self.config.DEFAULT['kernel']:  # == 'Bernoulli Polynomials':
+                                coeffs = phis[nid]  # coefficients for bernoulli
+                            phi = phi * self.functions.evaluate_basis(coeffs, xsm[i, k])  # multiplies phi(x0)*phi(x1)*etc.
+
+                    X[i][j] = phi
+
+            # # initialize tausqd at the mode of its prior: the inverse of the mode of sigma squared, such that the
+            # # initial variance for the betas is 1
+            # sigsqd = b / (1 + a)
+            # tausqd = btau / (1 + atau)
+
+            XtX = np.transpose(X).dot(X)
+
+            Xty = np.transpose(X).dot(data)
+
+            # See the link:
+            #     - "https://stackoverflow.com/questions/8765310/scipy-linalg-eig-return-complex-eigenvalues-for-
+            #        covariance-matrix"
+            Lamb, Q = eigh(XtX)  # using scipy eigh function to avoid imaginary values due to numerical errors
+            # Lamb, Q = LA.eig(XtX)
+
+            Lamb_inv = np.diag(1 / Lamb)
+
+            betahat = Q.dot(Lamb_inv).dot(np.transpose(Q)).dot(Xty)
+            squerr = LA.norm(data - X.dot(betahat)) ** 2
+
+            n = len(data)
+            astar = a + 1 + n / 2 + (mmtx + 1) / 2
+
+            atau_star = atau + mmtx / 2
+
+            # Gibbs iterations
+
+            betas = np.zeros((draws, mmtx + 1))
+            sigs = np.zeros((draws, 1))
+            taus = np.zeros((draws, 1))
+            lik = np.zeros((draws, 1))
+
+            for k in range(draws):
+
+                Lamb_tausqd = np.diag(Lamb) + (1 / tausqd) * np.identity(mmtx + 1)
+                Lamb_tausqd_inv = np.diag(1 / np.diag(Lamb_tausqd))
+
+                mun = Q.dot(Lamb_tausqd_inv).dot(np.transpose(Q)).dot(Xty)
+                S = Q.dot(np.diag(np.diag(Lamb_tausqd_inv) ** (1 / 2)))
+
+                vec = np.random.normal(loc=0, scale=1, size=(mmtx + 1, 1))  # drawing from normal distribution
+                betas[k][:] = np.transpose(mun + sigsqd ** (1 / 2) * (S).dot(vec))
+
+                vecc = mun - np.reshape(betas[k][:], (len(betas[k][:]), 1))
+
+                bstar = b + 0.5 * (betas[k][:].dot(XtX.dot(np.transpose([betas[k][:]]))) - 2 * betas[k][:].dot(Xty) +
+                                   dtd + betas[k][:].dot(np.transpose([betas[k][:]])) / tausqd)
+                # bstar = b + comp1.dot(comp2) + 0.5 * dtd - comp3;
+
+                # Returning a 'not a number' constant if bstar is negative, which would
+                # cause np.random.gamma to return a ValueError
+                if bstar < 0:
+                    sigsqd = math.nan
+                else:
+                    sigsqd = 1 / np.random.gamma(astar, 1 / bstar)
+
+                sigs[k] = sigsqd
+
+                btau_star = (1/(2*sigsqd)) * (betas[k][:].dot(np.reshape(betas[k][:], (len(betas[k][:]), 1)))) + btau
+
+                tausqd = 1 / np.random.gamma(atau_star, 1 / btau_star)
+                taus[k] = tausqd
+
+            # Calculate the evidence
+            siglik = np.var(data - np.matmul(X, betahat))
+
+            lik = -(n / 2) * np.log(siglik) - (n - 1) / 2
+            ev = (mmtx + 1) * np.log(n) - 2 * np.max(lik)
+
+            X = X[:, 0:mmtx + 1]
+
+            return betas, sigs, taus, betahat, X, ev
 
         # 'n' is the number of datapoints whereas 'm' is the number of inputs
         n, m = np.shape(inputs)
@@ -266,9 +432,9 @@ class fitSampler(FoKL):
                 else:
                     damtx = np.append(damtx, vecs, axis=0)
 
-                sampler_fn = SAMPLERS_DICT["gibbs"]
+                # sampler_fn = SAMPLERS_DICT["gibbs"]
                 [dam, null] = np.shape(damtx)
-                [beters, null, null, null, xers, ev] = sampler_fn(inputs, data, phis, X, damtx, a, b, atau, btau, draws,
+                [beters, null, null, null, xers, ev] = gibbs(inputs, data, phis, X, damtx, a, b, atau, btau, draws,
                                                              phind, xsm, sigsqd0, tausqd0, dtd)
                 if aic:
                     ev = ev + (2 - np.log(n)) * (dam + 1)
@@ -293,7 +459,7 @@ class fitSampler(FoKL):
                         for k in range(0, np.size(killtest)):
                             damtx_test = np.delete(damtx_test, int(np.array(killtest[k])-1), 0)
                         damtest, null = np.shape(damtx_test)
-                        [betertest, null, null, null, Xtest, evtest] = sampler_fn(inputs, data, phis, X, damtx_test, a, b,
+                        [betertest, null, null, null, Xtest, evtest] = gibbs(inputs, data, phis, X, damtx_test, a, b,
                                                                              atau, btau, draws, phind, xsm, sigsqd0,
                                                                              tausqd0, dtd)
                         if aic:
@@ -307,6 +473,7 @@ class fitSampler(FoKL):
                     damtx = np.delete(damtx, int(np.array(killset[k]) - 1), 0)
                 ev = evmin
                 X = xers
+
                 if self.ConsoleOutput:
                     if data.dtype != np.float64:  # if large dataset, then 'Gibbs: 100.00%' printed from inside gibbs
                         sys.stdout.write('\r')  # place cursor at start of line to erase 'Gibbs: 100.00%'
@@ -357,15 +524,15 @@ class fitSampler(FoKL):
         if gimmie:
             betas = beters
             mtx = damtx
-        self.betas = betas[-self.draws::, :]  # discard 'burnin' draws by only keeping last 'draws' draws
+        self.betas = betas[-self.config.DEFAULT['draws']::, :]  # discard 'burnin' draws by only keeping last 'draws' draws
         self.mtx = mtx
         self.evs = evs
-        return betas[-self.draws::, :], mtx, evs  # discard 'burnin'
+        return inputs, data, betas[-self.config.DEFAULT['draws']::, :], minmax, mtx, evs  # discard 'burnin'
 
 
 
-# Dictionary to map sampler names to classes
-SAMPLERS_DICT = {
-    "gibbs": gibbs,
-    "gibbs_update": gibbs_Xin_update
-}
+# # Dictionary to map sampler names to classes
+# SAMPLERS_DICT = {
+#     "gibbs": gibbs,
+#     "gibbs_update": gibbs_Xin_update
+# }

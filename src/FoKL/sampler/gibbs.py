@@ -1,11 +1,14 @@
 import numpy as np
+import math
+from numpy import linalg as LA
+from ..preprocessing.kernels import getKernels
 from scipy.linalg import eigh
 from .samplers import fitSampler
 
 class Sampler1fit(fitSampler):
-    def __init__(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
-        super().__init__(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd)
-    def gibbs(inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
+    def __init__(self, inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
+        super().__init__(self, inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd)
+    def gibbs(self, inputs, data, phis, Xin, discmtx, a, b, atau, btau, draws, phind, xsm, sigsqd, tausqd, dtd):
         """
         'inputs' is the set of normalized inputs -- both parameters and model
         inputs -- with columns corresponding to inputs and rows the different

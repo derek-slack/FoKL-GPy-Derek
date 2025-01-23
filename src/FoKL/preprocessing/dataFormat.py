@@ -3,11 +3,12 @@ import warnings
 import pandas as pd
 import copy
 from ..utils import str_to_bool, process_kwargs, merge_dicts, set_attributes
-from ..FoKLRoutines_update import FoKL
+class dataFormat:
+    def __init__(self, fokl, config):
+        self.fokl = fokl
+        self.config = config
+        # self.inputs = self.fokl
 
-class dataFormat(FoKL):
-    def __init__(self, hypers, settings, kernels, keep, default):
-        super().__init__(self, hypers, settings, kernels, keep, default)
 
     def format(self, inputs, data=None, AutoTranspose=True, SingleInstance=False, bit=64):
        """
@@ -186,15 +187,19 @@ class dataFormat(FoKL):
         for m in range(mm):  # for input var in input vars
             inputs[:, m] = (inputs[:, m] - minmax[m][0]) / (minmax[m][1] - minmax[m][0])
 
-        return inputs
+        inputs = np.array(inputs)
+
+        return inputs, minmax
 
     def clean(self, inputs, data=None, kwargs_from_other=None, _setattr=False, **kwargs):
         """
         For cleaning and formatting inputs prior to training a FoKL model. Note that data is not required but should be
         entered if available; otherwise, leave blank.
+
         Inputs:
             inputs == [n x m] input matrix of n observations by m features (i.e., 'x' variables in model)
             data   == [n x 1] output vector of n observations (i.e., 'y' variable in model)
+
         Keyword Inputs:
             _setattr          == [NOT FOR USER] defines 'self.inputs' and 'self.data' if True == False (default)
             train             == percentage (0-1) of n datapoints to use for training      == 1 (default)
@@ -205,6 +210,7 @@ class dataFormat(FoKL):
             minmax            == list of [min, max] lists; upper/lower bounds of each input variable == self.minmax (default)
             pillow            == list of [lower buffer, upper buffer] lists; fraction of span by which to expand 'minmax' == 0 (default)
             kwargs_from_other == [NOT FOR USER] used internally by fit or evaluate function
+
         Added Attributes:
             - self.inputs    == 'inputs' as [n x m] numpy array where each column is normalized on [0, 1] scale
             - self.data      == 'data' as [n x 1] numpy array
@@ -221,11 +227,14 @@ class dataFormat(FoKL):
             kwargs = merge_dicts(kwargs, kwargs_from_other)  # merge dictionaries (kwargs={} is expected but just in case)
         current = process_kwargs(default, kwargs)
         current['normalize'] = str_to_bool(current['normalize'])
+
+
+
         # Format and normalize:
         inputs, data = self.format(inputs, data, current['AutoTranspose'], current['SingleInstance'], current['bit'])
         if current['normalize'] is True:
-            inputs = self.normalize(inputs, current['minmax'], current['pillow'], current['pillow_type'])
-
+            inputs, minmax = self.normalize(inputs, current['minmax'], current['pillow'], current['pillow_type'])
+        
             # Check if any 'inputs' exceeds [0, 1], since 'normalize=True' implies this is desired:
             inputs_cap0 = inputs < 0
             inputs_cap1 = inputs > 1
@@ -233,18 +242,45 @@ class dataFormat(FoKL):
                 warnings.warn("'inputs' exceeds [0, 1] normalization bounds. Capping values at 0 and 1.")
                 inputs[inputs_cap0] = 0.0  # cap at 0
                 inputs[inputs_cap1] = 1.0  # cap at 1
+
         # Define full dataset with training log as attributes when clean called from fit, or when clean called for first time:
         if hasattr(self, 'inputs') is False or _setattr is True:
+
             # Index percentage of dataset as training set:
             trainlog = self.generate_trainlog(current['train'], inputs.shape[0])
+
             # Define/update attributes with cleaned data and other relevant variables:
             attrs = {'inputs': inputs, 'data': data, 'trainlog': trainlog}
             set_attributes(self, attrs)
+
         # Return formatted and possibly normalized dataset, depending on if user passed 'inputs' only or 'inputs' and 'data':
         if data is None:  # assume user only wants 'inputs' returned, e.g., 'clean_dataset = model.clean(dataset)'
             return inputs
         else:  # e.g., 'clean_inputs, clean_data = model.clean(inputs, data)'
-            return inputs, data
+            return inputs, data, minmax
+        
+    def generate_trainlog(self, train, n=None):
+        """Generate random logical vector of length 'n' with 'train' percent as True."""
+        if train < 1:
+            if n is None:
+                n = self.inputs.shape[0]  # number of observations
+            l_log = int(n * train)  # required length of indices for training
+            if l_log < 2:
+                l_log = int(2)  # minimum required for training set
+            trainlog_i = np.array([], dtype=int)  # indices of training data (as an index)
+            while len(trainlog_i) < l_log:
+                trainlog_i = np.append(trainlog_i, np.random.random_integers(n, size=l_log) - 1)
+                trainlog_i = np.unique(trainlog_i)  # also sorts low to high
+                np.random.shuffle(trainlog_i)  # randomize sort
+            if len(trainlog_i) > l_log:
+                trainlog_i = trainlog_i[0:l_log]  # cut-off extra indices (beyond 'percent')
+            trainlog = np.zeros(n, dtype=bool)  # indices of training data (as a logical)
+            for i in trainlog_i:
+                trainlog[i] = True
+        else:
+            # trainlog = np.ones(n, dtype=bool)  # wastes memory, so use following method coupled with 'trainset':
+            trainlog = None  # means use all observations
+        return trainlog
 
     def trainset(self):
         """
@@ -260,20 +296,22 @@ class dataFormat(FoKL):
     def inputs_to_phind(self, inputs, phis=None, kernel=None):
         """
         Twice normalize the inputs to index the spline coefficients.
+
         Inputs:
             - inputs == normalized inputs as numpy array (i.e., self.inputs)
             - phis   == spline coefficients
             - kernel == form of basis functions
+
         Outputs:
             - X     == twice normalized inputs, used in bss_derivatives
             - phind == index of coefficients for 'Cubic Splines' kernel for 'inputs' (i.e., piecewise cubic function)
             - xsm   == unsure of description, but used in fit/gibbs (see MATLAB) as if is twice normalized
         """
         if kernel is None:
-            kernel = self.kernel
+            kernel = self.config.DEFAULT['kernel']
         if phis is None:
-            phis = self.phis
-        if kernel == self.kernels[1]:  # == 'Bernoulli Polynomials':
+            phis = self.config.DEFAULT['phis'] 
+        if kernel == self.config.KERNELS[1]:  # == 'Bernoulli Polynomials':
             warnings.warn("Twice normalization of inputs is not required for the 'Bernoulli Polynomials' kernel",
                           category=UserWarning)
             return inputs, [], []
@@ -290,10 +328,11 @@ class dataFormat(FoKL):
         phind = phind + set  # makes sense assuming L_phis > M
 
         r = 1 / l_phis  # interval of when basis function changes (i.e., when next cubic function defines spline)
-        xmin = np.array((phind - 1) * r, dtype=inputs.dtype)
+        xmin = np.array((phind - 1) * r, dtype= inputs.dtype) # inputs.dtype
         X = (inputs - xmin) / r  # twice normalized inputs (0-1 first then to size of phis second)
 
         phind = phind - 1
-        xsm = np.array(l_phis * inputs - phind, dtype=inputs.dtype)
-
+        xsm = np.array(l_phis * inputs - phind, dtype= inputs.dtype) # inputs.dtype
+        if np.max(phind) > 499 or np.min(phind) < 0:
+            raise ValueError('Inputs are not normalized correctly, try calling clean=True within evaluate to evaluate with normalization of model training')
         return X, phind, xsm
